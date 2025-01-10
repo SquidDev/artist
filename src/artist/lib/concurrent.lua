@@ -1,10 +1,19 @@
 local expect = require "cc.expect".expect
 
+local exception_mt = {
+    __name = "exception",
+    __tostring = function(self) return self.message end,
+}
+
 local function checked_resume(co, ...)
   local ok, result = coroutine.resume(co, ...)
-  if not ok then error(debug.traceback(co, result), 0) end
+  if ok then return result end
 
-  return result
+  if type(result) == "string" then
+    -- Support CC:T's exception protocol - see cc.internal.exception
+    result = setmetatable({ message = result, thread = co }, exception_mt)
+  end
+  error(result, 0)
 end
 
 --- Create a new future. This allows for basic cross-coroutine messaging.
